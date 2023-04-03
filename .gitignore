@@ -1,0 +1,9 @@
+*.o
+svg.png
+svg.tab.*
+*.out
+lex.yy.*
+*.output
+*.svg
+*.dot
+*.bin
