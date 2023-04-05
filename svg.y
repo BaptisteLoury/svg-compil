@@ -1,8 +1,10 @@
 %{
-
 #include <stdio.h>
 #include <stdlib.h>
 #include <math.h>
+#include <unistd.h>
+#include <fcntl.h>
+
 
 #include "figures.h"
 
@@ -27,6 +29,7 @@ HashMap* figures;
     long y;
   } dim;
   Options* opts;
+  Coord* point;
 }
 
 %token <real> REAL
@@ -36,10 +39,11 @@ HashMap* figures;
 %token ALL AT CIRCLE COPY CREATE DELETE DESELECT DO DONE DUMP 
 %token ELLIPSE FILL FONTSIZE FOREACH INVISIBLE LINE MOVE NOFILL
 %token POLYGON RADIUS RENAME RECTANGLE ROTATE SELECT SET TEXT
-%token THICKNESS VISIBLE WITH ZOOM EOL COORD_L COMMA COORD_R
+%token THICKNESS VISIBLE WITH ZOOM EOL COORD_L COMMA COORD_R SEMICOLON
 
-%type <fig> FIGURE FIG_CIRCLE FIG_RECTANGLE FIG_LINE FIG_TEXT
+%type <fig> FIGURE FIG_CIRCLE FIG_RECTANGLE FIG_LINE FIG_TEXT FIG_POLYGON FIG_ELLIPSE
 %type <opts> OPTION
+%type <point> COORD COORD_ALONE
 
 %start S
 %%
@@ -50,17 +54,24 @@ S:
   ;
 
 INPUT:
-    error EOL {}
-  | CREATE_CMD EOL {printf("[ACTION]: CREATE\n");}
-  | DUMP_CMD EOL {printf("[ACTION]: DUMP\n");}
-  | RENAME_CMD EOL {printf("[ACTION]: RENAME\n");}
-  | DELETE_CMD EOL {printf("[ACTION]: DELETE\n");}
-  | SET_CMD EOL {printf("[ACTION]: SET\n");}
-  | SELECT_CMD EOL {printf("[ACTION]: SELECT\n");}
-  | DESELECT_CMD EOL {printf("[ACTION]: DESELECT\n");}
-  | MOVE_CMD EOL {printf("[ACTION]: MOVE\n");}
-  | ZOOM_CMD EOL {printf("[ACTION]: ZOOM\n");}
-  | ROTATE_CMD EOL {printf("[ACTION]: ROTATE\n");}
+      EOL {}
+    | SEMICOLON {}
+    | CMD EOL {}
+    | CMD SEMICOLON {}
+  ;
+
+CMD:
+    error {}
+  | CREATE_CMD {printf("[ACTION]: CREATE\n");}
+  | DUMP_CMD {printf("[ACTION]: DUMP\n");}
+  | RENAME_CMD {printf("[ACTION]: RENAME\n");}
+  | DELETE_CMD {printf("[ACTION]: DELETE\n");}
+  | SET_CMD {printf("[ACTION]: SET\n");}
+  | SELECT_CMD {printf("[ACTION]: SELECT\n");}
+  | DESELECT_CMD {printf("[ACTION]: DESELECT\n");}
+  | MOVE_CMD {printf("[ACTION]: MOVE\n");}
+  | ZOOM_CMD {printf("[ACTION]: ZOOM\n");}
+  | ROTATE_CMD {printf("[ACTION]: ROTATE\n");}
   ;
 
 CREATE_CMD:
@@ -132,6 +143,8 @@ FIGURE:
   | FIG_RECTANGLE {$$=$1;}
   | FIG_LINE {$$=$1;}
   | FIG_TEXT {$$=$1;}
+  | FIG_POLYGON {$$=$1;}
+  | FIG_ELLIPSE {$$=$1;}
   ;
 
 FIG_CIRCLE:
@@ -152,16 +165,39 @@ FIG_TEXT:
     TEXT NAME AT COORD_L NUM COMMA NUM COORD_R STRING {$$=createText($2, $9, $5, $7);}
   | TEXT NAME STRING AT COORD_L NUM COMMA NUM COORD_R {$$=createText($2, $3, $6, $8);}
   ;
+
+FIG_POLYGON:
+    POLYGON NAME COORD {$$=createPolygon($2, $3);}
+  ;
+
+FIG_ELLIPSE:
+    ELLIPSE NAME AT COORD_ALONE RADIUS DIM {$$=createEllipse($2, $4, $6.x, $6.y);}
+  | ELLIPSE NAME AT RADIUS DIM AT COORD_ALONE {$$=createEllipse($2, $7, $5.x, $5.y);}
+  ;
+
+COORD:
+    COORD_ALONE {$$=$1;}
+  | COORD_L NUM COMMA NUM COORD_R COORD {$$=generate_coords($6, $2, $4);}
+  ;
+
+COORD_ALONE :
+    COORD_L NUM COMMA NUM COORD_R {$$=generate_coords(NULL, $2, $4);}
+  ;
+
 %%
 
 int yyerror(char *s) {
     fprintf(stderr, "[ERROR]: %s\n",s);
-
+    exit(0);
 }
 
-int main(void) {
+int main(int argc, char * argv[]) {
+    if (argc == 2) {
+        int fd = open(argv[1], O_RDONLY);
+        dup2(fd, 0);
+    }
+
     figures = createHashMap(1000);
     yyparse();
     freeHashMap(figures);
 }
-

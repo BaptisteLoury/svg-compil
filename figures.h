@@ -21,9 +21,15 @@ Figure* createCircle(char * name, long x, long y, long radius);
 
 Figure* createRectangle(char * name, long x, long y, long dimension_x, long dimension_y);
 
+Figure* createPolygon(char * name, Coord* points);
+
+Figure* createEllipse(char * name, Coord* points, long rx, long ry);
+
 Figure* createLine(char * name, long x1, long y1, long x2, long y2);
 
 Figure* createText(char * name, char * text, long x, long y);
+
+Coord* generate_coords(Coord* coords, long x, long y);
 
 void delete_fig(HashMap* hashMap, char * name);
 

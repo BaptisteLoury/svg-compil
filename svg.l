@@ -17,6 +17,8 @@ dim {pos_num}x{pos_num}
 %option noyywrap
 %%
 
+<<EOF>> {exit(0);}
+
 {string} {
   yylval.str = strdup(yytext);
   return STRING;
@@ -73,6 +75,7 @@ dim {pos_num}x{pos_num}
 "(" {return COORD_L;}
 ")" {return COORD_R;}
 "," {return COMMA;}
+";" {return SEMICOLON;}
 {dim} {
   yylval.dim.x = strtoul(strtok(yytext, "x"), NULL, 10);
   yylval.dim.y = strtoul(strtok(NULL, "x"), NULL, 10);

@@ -14,7 +14,9 @@ typedef enum {
     CIRCLE,
     RECTANGLE,
     LINE,
-    TEXT
+    TEXT,
+    POLYGON,
+    ELLIPSE
 } fig_type;
 
 struct fig {
@@ -22,12 +24,9 @@ struct fig {
     char name[MAX_KEY_LEN];
     Coord* coords;
     long radius;
-    long dimension_x;
-    long dimension_y;
     char text[MAX_KEY_LEN];
     Options* opts;
     int selected;
-    Coord* centroid;
 };
 
 struct opt {
@@ -160,50 +159,46 @@ Coord* generate_coords(Coord* coords, long x, long y) {
     return generated;
 }
 
-void set_centroid(Figure* figure) {
+Coord get_centroid(Figure* figure) {
     long x = 0;
     long y = 0;
-    switch (figure->type)
-    {
-    case RECTANGLE:
-        x = figure->coords->x + figure->dimension_x/2;
-        y = figure->coords->y + figure->dimension_y/2;
-        break;
-    default:;
-        int i = 0;
-        Coord* coord = figure->coords;
-        while(coord != NULL) {
-            x += coord->x;
-            y += coord->y;
-            i++;
-            coord = coord->next;
-        }
-        x /= i;
-        y /= i;
-        break;
+    int i = 0;
+    Coord* coord = figure->coords;
+    while(coord != NULL) {
+        x += coord->x;
+        y += coord->y;
+        i++;
+        coord = coord->next;
     }
-    fprintf(stdout, "\n%ld;%ld\n", x, y);
-    figure->centroid = generate_coords(NULL, x, y);
+    x /= i;
+    y /= i;
+    Coord centroid;
+    centroid.x = x;
+    centroid.y = y;
+    return centroid;
 }
 
 Figure* createCircle(char * name, long x, long y, long radius) {
     Figure* circle = createFigure(name, CIRCLE, generate_coords(NULL, x, y));
     circle->radius = radius;
-    set_centroid(circle);
     return circle;
 }
 
+Figure* createPolygon(char * name, Coord* points) {
+    Figure* polygon = createFigure(name, POLYGON, points);
+    return polygon;
+}
+
 Figure* createRectangle(char * name, long x, long y, long dimension_x, long dimension_y) {
-    Figure* rectangle = createFigure(name, RECTANGLE, generate_coords(NULL, x, y));
-    rectangle->dimension_x = dimension_x;
-    rectangle->dimension_y = dimension_y;
-    set_centroid(rectangle);
-    return rectangle;
+    Coord* points = generate_coords(NULL, x + dimension_x, y);
+    points = generate_coords(points, x + dimension_x, y + dimension_y);
+    points = generate_coords(points, x, y + dimension_y);
+    points = generate_coords(points, x, y);
+    return createPolygon(name, points);
 }
 
 Figure* createLine(char * name, long x1, long y1, long x2, long y2) {
     Figure* line = createFigure(name, LINE, generate_coords(generate_coords(NULL, x1, y1), x2, y2));
-    set_centroid(line);
     return line;
 }
 
@@ -220,7 +215,12 @@ char * removeDblQuote(char * string) {
 Figure* createText(char * name, char * text, long x, long y) {
     Figure* textF = createFigure(name, TEXT, generate_coords(NULL, x, y));
     strcpy(textF->text, removeDblQuote(text));
-    set_centroid(textF);
+    return textF;
+}
+
+Figure* createEllipse(char * name, Coord* points, long rx, long ry) {
+    points->next = generate_coords(NULL, rx, ry);
+    Figure* textF = createFigure(name, ELLIPSE, points);
     return textF;
 }
 
@@ -234,7 +234,8 @@ void print_options(FILE* stream, Figure* figure) {
         fprintf(stream, " visibility=\"hidden\"");
     }
     if(figure->opts->rotation_angle != DEFAULT_ANGLE) {
-        fprintf(stream, " transform=\"rotate(%ld, %ld, %ld)\"", figure->opts->rotation_angle, figure->centroid->x, figure->centroid->y);
+        Coord centroid = get_centroid(figure);
+        fprintf(stream, " transform=\"rotate(%ld, %ld, %ld)\"", figure->opts->rotation_angle, centroid.x, centroid.y);
     }
 }
 
@@ -244,14 +245,26 @@ void print_circle(FILE* stream, Figure* figure) {
     fprintf(stream, " />\n");
 }
 
-void print_rectangle(FILE* stream, Figure* figure) {
-    fprintf(stream, "\t<rect x=\"%ld\" y=\"%ld\" width=\"%ld\" height=\"%ld\"", figure->coords->x, figure->coords->y, figure->dimension_x, figure->dimension_y);
+void print_polygon(FILE* stream, Figure* figure) {
+    fprintf(stream, "\t<polygon points=\"");
+    Coord* point = figure->coords;
+    while (point != NULL) {
+        fprintf(stream, "%ld,%ld ", point->x, point->y);
+        point = point->next;
+    }
+    fprintf(stream, "\"");
     print_options(stream, figure);
     fprintf(stream, " />\n");
 }
 
 void print_line(FILE* stream, Figure* figure) {
     fprintf(stream, "\t<line x1=\"%ld\" y1=\"%ld\" x2=\"%ld\" y2=\"%ld\"", figure->coords->x, figure->coords->y, figure->coords->next->x, figure->coords->next->y);
+    print_options(stream, figure);
+    fprintf(stream, " />\n");
+}
+
+void print_ellipse(FILE* stream, Figure* figure) {
+    fprintf(stream, "\t<ellipse cx=\"%ld\" cy=\"%ld\" rx=\"%ld\" ry=\"%ld\"", figure->coords->x, figure->coords->y, figure->coords->next->x, figure->coords->next->y);
     print_options(stream, figure);
     fprintf(stream, " />\n");
 }
@@ -273,14 +286,17 @@ char * toSvg(FILE* stream, Figure* figure) {
         case CIRCLE:
             print_circle(stream, figure);
             break;
-        case RECTANGLE:
-            print_rectangle(stream, figure);
-            break;
         case LINE:
             print_line(stream, figure);
             break;
         case TEXT:
             print_text(stream, figure);
+            break;
+        case POLYGON:
+            print_polygon(stream, figure);
+            break;
+        case ELLIPSE:
+            print_ellipse(stream, figure);
             break;
         default:
             fprintf(stream, "undefined\n");
@@ -346,8 +362,6 @@ Figure* copyFig(Figure * figure) {
     strcpy(copy->name, figure->name);
     copy->coords = figure->coords;
     copy->radius = figure->radius;
-    copy->dimension_x = figure->dimension_x;
-    copy->dimension_y = figure->dimension_y;
     strcpy(copy->text, figure->text);
     copy->opts = figure->opts;
     return copy;
@@ -431,8 +445,28 @@ void move(HashMap* hashMap, long x, long y) {
     }
 }
 
+void homothetie(Figure* figure, double factor) {
+    Coord centroid = get_centroid(figure);
+    Coord* point = figure->coords;
+    while (point != NULL) {
+        long x_from_centroid = centroid.x - point->x;
+        long y_from_centroid = centroid.y - point->y;
+        point->x = centroid.x + (factor * x_from_centroid);
+        point->y = centroid.y + (factor * y_from_centroid);
+        point = point->next;
+    }
+}
+
 void zoom(HashMap* hashMap, double factor) {
-    
+    for (int i = 0; i < hashMap->size; i++) {
+        Node* node = hashMap->buckets[i];
+        while (node != NULL) {
+            if(node->value != NULL && node->value->selected) {
+                homothetie(node->value, factor);
+            }
+            node = node->next;
+        }
+    }
 }
 
 void rotate(HashMap* hashMap, long angle) {
