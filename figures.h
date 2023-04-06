@@ -11,6 +11,8 @@ typedef struct hm HashMap;
 
 typedef struct coord Coord;
 
+typedef struct nameL NameList;
+
 HashMap* createHashMap(int size);
 
 void add(HashMap* hashMap, Figure* figure);
@@ -39,9 +41,9 @@ void dump(HashMap* hashMap);
 
 void dump_to_file(HashMap* hashMap, char * file);
 
-Figure* copyFig(Figure * figure);
+void copy(HashMap* hashMap, char * toCopy, char * copy);
 
-void applyOptions(HashMap* HashMap, char * name, Options* options);
+void apply_options_list(HashMap* HashMap, NameList* list, Options* options);
 
 Options* get_default_options();
 Options* set_color(Options* opt, char * color);
@@ -56,3 +58,9 @@ void set_all_selected(HashMap* hashMap, int selected);
 void move(HashMap* hashMap, long x, long y);
 void zoom(HashMap* hashMap, double factor);
 void rotate(HashMap* hashMap, long angle);
+
+void move_list(HashMap* hashMap, NameList* list, long x, long y);
+void zoom_list(HashMap* hashMap, NameList* list, double factor);
+void rotate_list(HashMap* hashMap, NameList* list, long angle);
+
+NameList* appendName(NameList* list, char * name);

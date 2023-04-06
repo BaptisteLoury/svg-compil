@@ -30,6 +30,7 @@ HashMap* figures;
   } dim;
   Options* opts;
   Coord* point;
+  NameList* names; 
 }
 
 %token <real> REAL
@@ -42,8 +43,9 @@ HashMap* figures;
 %token THICKNESS VISIBLE WITH ZOOM EOL COORD_L COMMA COORD_R SEMICOLON
 
 %type <fig> FIGURE FIG_CIRCLE FIG_RECTANGLE FIG_LINE FIG_TEXT FIG_POLYGON FIG_ELLIPSE
-%type <opts> OPTION
+%type <opts> OPTION OPTION_OR_EMPTY
 %type <point> COORD COORD_ALONE
+%type <names> NAME_LIST
 
 %start S
 %%
@@ -69,9 +71,8 @@ CMD:
   | SET_CMD {printf("[ACTION]: SET\n");}
   | SELECT_CMD {printf("[ACTION]: SELECT\n");}
   | DESELECT_CMD {printf("[ACTION]: DESELECT\n");}
-  | MOVE_CMD {printf("[ACTION]: MOVE\n");}
-  | ZOOM_CMD {printf("[ACTION]: ZOOM\n");}
-  | ROTATE_CMD {printf("[ACTION]: ROTATE\n");}
+  | TRANSFORMATION_CMD {}
+  | COPY_CMD {printf("[ACTION]: COPY\n");}
   ;
 
 CREATE_CMD:
@@ -92,7 +93,7 @@ DUMP_CMD:
   ;
 
 SET_CMD:
-  SET NAME OPTION {applyOptions(figures, $2, $3);}
+  SET NAME_LIST OPTION {apply_options_list(figures, $2, $3);}
   ;
 
 SELECT_CMD:
@@ -115,27 +116,44 @@ DESELECT_CMD_NAMES:
   | NAME COMMA SELECT_CMD_NAMES {set_selected(figures, $1, 0);}
   ;
 
+TRANSFORMATION_CMD:
+  MOVE_CMD {printf("[ACTION]: MOVE\n");}
+  | ZOOM_CMD {printf("[ACTION]: ZOOM\n");}
+  | ROTATE_CMD {printf("[ACTION]: ROTATE\n");}
+  ;
+
 MOVE_CMD:
     MOVE COORD_L NUM COMMA NUM COORD_R {move(figures, $3, $5);}
+    | MOVE NAME_LIST COORD_L NUM COMMA NUM COORD_R {move_list(figures, $2, $4, $6);}
   ;
 
 ZOOM_CMD:
     ZOOM REAL {zoom(figures, $2);}
+    | ZOOM NAME_LIST REAL {zoom_list(figures, $2, $3);}
   ;
 
 ROTATE_CMD:
     ROTATE NUM {rotate(figures, $2);}
+    | ROTATE NAME_LIST NUM {rotate_list(figures, $2, $3);}
+  ;
+
+COPY_CMD:
+  COPY NAME NAME {copy(figures, $2, $3);}
   ;
 
 OPTION:
+  THICKNESS NUM  OPTION_OR_EMPTY {$$=set_thickness($3, $2);}
+  | FILL WITH COLOR  OPTION_OR_EMPTY {$$=set_fill_color($4, $3);}
+  | COLOR  OPTION_OR_EMPTY {$$=set_color($2, $1);}
+  | NOFILL  OPTION_OR_EMPTY {$$=set_fill_color($2, "none");}
+  | INVISIBLE  OPTION_OR_EMPTY {$$=set_visible($2, 0);}
+  | VISIBLE  OPTION_OR_EMPTY {$$=set_visible($2, 1);}
+  | FONTSIZE NUM  OPTION_OR_EMPTY {$$=set_font_size($3, $2);}
+  ;
+
+OPTION_OR_EMPTY:
   %empty {$$=get_default_options();}
-  | THICKNESS NUM OPTION {$$=set_thickness($3, $2);}
-  | FILL WITH COLOR OPTION {$$=set_fill_color($4, $3);}
-  | COLOR OPTION {$$=set_color($2, $1);}
-  | NOFILL OPTION {$$=set_fill_color($2, "none");}
-  | INVISIBLE OPTION {$$=set_visible($2, 0);}
-  | VISIBLE OPTION {$$=set_visible($2, 1);}
-  | FONTSIZE NUM OPTION {$$=set_font_size($3, $2);}
+  | OPTION {$$=$1;}
   ;
 
 FIGURE:
@@ -182,6 +200,11 @@ COORD:
 
 COORD_ALONE :
     COORD_L NUM COMMA NUM COORD_R {$$=generate_coords(NULL, $2, $4);}
+  ;
+
+NAME_LIST:
+  NAME {$$=appendName(NULL, $1);}
+  | NAME COMMA NAME_LIST {$$=appendName($3, $1);}
   ;
 
 %%

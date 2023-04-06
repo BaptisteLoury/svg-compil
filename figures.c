@@ -6,7 +6,7 @@
 
 #define DEFAULT_THICKNESS -1
 #define DEFAULT_VISIBILITY 1
-#define DEFAULT_FONT_SIZE -1
+#define DEFAULT_FONT_SIZE 16
 #define DEFAULT_COLOR "#000"
 #define DEFAULT_ANGLE 0
 
@@ -41,7 +41,7 @@ struct opt {
 struct nd {
     char key[MAX_KEY_LEN];
     Figure* value;
-    struct Node* next;
+    Node* next;
 };
 
 struct hm {
@@ -53,6 +53,11 @@ struct coord {
     long x;
     long y;
     Coord* next;
+};
+
+struct nameL {
+    char name[MAX_KEY_LEN];
+    NameList* next;
 };
 
 int hash(char* key, int size) {
@@ -126,13 +131,26 @@ void deleteKey(HashMap* hashMap, char* key) {
     }
 }
 
+void freeFig(Figure* figure) {
+    if (figure != NULL) {
+        free(figure->opts);
+        Coord * current = figure->coords;
+        while (current != NULL) {
+            Coord* temp = current;
+            current = current->next;
+            free(temp);
+        }
+        free(figure);
+    }
+}
+
 void freeHashMap(HashMap* hashMap) {
     for (int i = 0; i < hashMap->size; i++) {
         Node* node = hashMap->buckets[i];
         while (node != NULL) {
             Node* next = node->next;
             if(node->value != NULL) {
-                free(node->value);
+                freeFig(node->value);
             }
             free(node);
             node = next;
@@ -225,8 +243,7 @@ Figure* createEllipse(char * name, Coord* points, long rx, long ry) {
 }
 
 void print_options(FILE* stream, Figure* figure) {
-    fprintf(stream, " stroke=\"%s\"", figure->opts->color);
-    fprintf(stream, " fill=\"%s\"", figure->opts->fill_color);
+    fprintf(stream, " stroke=\"%s\" fill=\"%s\"", figure->opts->color, figure->opts->fill_color);
     if (figure->opts->thickness != DEFAULT_THICKNESS) {
         fprintf(stream, " stroke-width=\"%ld\"", figure->opts->thickness);
     }
@@ -273,9 +290,7 @@ void print_text(FILE* stream, Figure* figure) {
     fprintf(stream, "\t<text x=\"%ld\" y=\"%ld\"", figure->coords->x, figure->coords->y);
     print_options(stream, figure);
     fprintf(stdout, "%ld\n", figure->opts->font_size);
-    if (figure->opts->font_size != DEFAULT_FONT_SIZE) {
-        fprintf(stream, " font-size=\"%ld\"", figure->opts->font_size);
-    }
+    fprintf(stream, " font-size=\"%ld\"", figure->opts->font_size);
     fprintf(stream, " >");
     fprintf(stream, "%s", figure->text);
     fprintf(stream, "</text>\n");
@@ -342,29 +357,48 @@ void delete_fig(HashMap* hashMap, char * name) {
     Figure* figure = get(hashMap, name);
     if(figure != NULL) {
         deleteKey(hashMap, name);
-        free(figure);
+        freeFig(figure);
     }
 }
 
 void rename_fig(HashMap* hashMap, char * old, char * new) {
     Figure* figure = get(hashMap, old);
     if(figure != NULL) {
-        Figure* newFigure = copyFig(figure);
-        strcpy(newFigure->name, new);
-        delete_fig(hashMap, old);
-        put(hashMap, new, newFigure);
+        strcpy(figure->name, new);
+        deleteKey(hashMap, old);
+        put(hashMap, new, figure);
     }
+}
+
+Coord* copyCoord(Coord* orig) {
+    Coord* new = NULL;
+    if  (orig != NULL) {
+        new = (Coord*) malloc(sizeof(Coord));
+        memcpy(new, orig, sizeof(Coord));
+        new->next = copyCoord(orig->next);
+    }
+    return new;
 }
 
 Figure* copyFig(Figure * figure) {
     Figure* copy = (Figure*) malloc(sizeof(Figure));
-    copy->type = figure->type;
-    strcpy(copy->name, figure->name);
-    copy->coords = figure->coords;
-    copy->radius = figure->radius;
-    strcpy(copy->text, figure->text);
-    copy->opts = figure->opts;
+    memcpy(copy, figure, sizeof(Figure));
+
+    copy->opts = (Options*) malloc(sizeof(Options));
+    memcpy(copy->opts, figure->opts, sizeof(Options));
+
+    copy->coords = copyCoord(figure->coords);
+
     return copy;
+}
+
+void copy(HashMap* hashMap, char * toCopy, char * copy) {
+    Figure * orig = get(hashMap, toCopy);
+    if (orig != NULL && !exists(hashMap, copy)) {
+        Figure * new = copyFig(orig);
+        strcpy(new->name, copy);
+        put(hashMap, copy, new);
+    }
 }
 
 void applyOptions(HashMap* HashMap, char * name, Options* options) {
@@ -373,6 +407,16 @@ void applyOptions(HashMap* HashMap, char * name, Options* options) {
         free(figure->opts);
         figure->opts = options;
     }
+}
+
+void apply_options_list(HashMap* HashMap, NameList* list, Options* options) {
+    while (list != NULL) {
+        Options* for_current = (Options*) malloc(sizeof(Options));
+        memcpy(for_current, options, sizeof(Options));
+        applyOptions(HashMap, list->name, for_current);
+        list = list->next;
+    }
+    free(options);
 }
 
 Options* get_default_options() {
@@ -384,6 +428,7 @@ Options* get_default_options() {
     opt->font_size = DEFAULT_FONT_SIZE;
     return opt;
 }
+
 Options* set_color(Options* opt, char * color) {
     strcpy(opt->color, color);
     return opt;
@@ -428,32 +473,61 @@ void set_all_selected(HashMap* hashMap, int selected) {
     }
 }
 
+NameList* appendName(NameList* list, char * name) {
+    NameList* newList = (NameList*) malloc(sizeof(NameList));
+    strcpy(newList->name, name);
+    newList->next = list;
+    return newList;
+}
+
+void move_fig(Figure* figure, long x, long y) {
+    Coord* coord = figure->coords;
+    while (coord != NULL) {
+        coord->x += x;
+        coord->y += y;
+        coord = coord->next;
+    }
+}
+
 void move(HashMap* hashMap, long x, long y) {
     for (int i = 0; i < hashMap->size; i++) {
         Node* node = hashMap->buckets[i];
         while (node != NULL) {
             if(node->value != NULL && node->value->selected) {
-                Coord* coord = node->value->coords;
-                while (coord != NULL) {
-                    coord->x += x;
-                    coord->y += y;
-                    coord = coord->next;
-                }
+                move_fig(node->value, x, y);
             }
             node = node->next;
         }
     }
 }
 
+void move_list(HashMap* hashMap, NameList* list, long x, long y) {
+    while (list != NULL) {
+        Figure* figure = get(hashMap, list->name);
+        move_fig(figure, x, y);
+        list = list->next;
+    }
+}
+
 void homothetie(Figure* figure, double factor) {
-    Coord centroid = get_centroid(figure);
-    Coord* point = figure->coords;
-    while (point != NULL) {
-        long x_from_centroid = centroid.x - point->x;
-        long y_from_centroid = centroid.y - point->y;
-        point->x = centroid.x + (factor * x_from_centroid);
-        point->y = centroid.y + (factor * y_from_centroid);
-        point = point->next;
+    switch(figure->type) {
+        case CIRCLE:
+            figure->radius *= factor;
+            break;
+        case TEXT:
+            figure->opts->font_size *= factor;
+            break;
+        default:;
+            Coord centroid = get_centroid(figure);
+            Coord* point = figure->coords;
+            while (point != NULL) {
+                long x_from_centroid = centroid.x - point->x;
+                long y_from_centroid = centroid.y - point->y;
+                point->x = centroid.x + (factor * x_from_centroid);
+                point->y = centroid.y + (factor * y_from_centroid);
+                point = point->next;
+            }
+            break;
     }
 }
 
@@ -469,15 +543,35 @@ void zoom(HashMap* hashMap, double factor) {
     }
 }
 
+void zoom_list(HashMap* hashMap, NameList* list, double factor) {
+    while (list != NULL) {
+        Figure* figure = get(hashMap, list->name);
+        homothetie(figure, factor);
+        list = list->next;
+    }
+}
+
+void rotate_fig(Figure* figure, long angle) {
+    figure->opts->rotation_angle += angle;
+    figure->opts->rotation_angle %= 360;
+}
+
 void rotate(HashMap* hashMap, long angle) {
     for (int i = 0; i < hashMap->size; i++) {
         Node* node = hashMap->buckets[i];
         while (node != NULL) {
             if(node->value != NULL && node->value->selected) {
-                node->value->opts->rotation_angle += angle;
-                node->value->opts->rotation_angle %= 360;
+                rotate_fig(node->value, angle);
             }
             node = node->next;
         }
+    }
+}
+
+void rotate_list(HashMap* hashMap, NameList* list, long angle) {
+    while (list != NULL) {
+        Figure* figure = get(hashMap, list->name);
+        rotate_fig(figure, angle);
+        list = list->next;
     }
 }
