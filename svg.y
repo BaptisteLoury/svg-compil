@@ -5,13 +5,13 @@
 #include <unistd.h>
 #include <fcntl.h>
 
-
 #include "figures.h"
 
 int yyerror(char*);
 int yylex();
 
 HashMap* figures;
+NameList* names;
 
 %}
 
@@ -28,9 +28,7 @@ HashMap* figures;
     long x;
     long y;
   } dim;
-  Options* opts;
   Coord* point;
-  NameList* names; 
 }
 
 %token <real> REAL
@@ -43,9 +41,7 @@ HashMap* figures;
 %token THICKNESS VISIBLE WITH ZOOM EOL COORD_L COMMA COORD_R SEMICOLON
 
 %type <fig> FIGURE FIG_CIRCLE FIG_RECTANGLE FIG_LINE FIG_TEXT FIG_POLYGON FIG_ELLIPSE
-%type <opts> OPTION OPTION_OR_EMPTY
 %type <point> COORD COORD_ALONE
-%type <names> NAME_LIST
 
 %start S
 %%
@@ -93,7 +89,7 @@ DUMP_CMD:
   ;
 
 SET_CMD:
-  SET NAME_LIST OPTION {apply_options_list(figures, $2, $3);}
+  SET NAME_LIST OPTION {}
   ;
 
 SELECT_CMD:
@@ -124,17 +120,17 @@ TRANSFORMATION_CMD:
 
 MOVE_CMD:
     MOVE COORD_L NUM COMMA NUM COORD_R {move(figures, $3, $5);}
-    | MOVE NAME_LIST COORD_L NUM COMMA NUM COORD_R {move_list(figures, $2, $4, $6);}
+    | MOVE NAME_LIST COORD_L NUM COMMA NUM COORD_R {move_list(figures, names, $4, $6);}
   ;
 
 ZOOM_CMD:
     ZOOM REAL {zoom(figures, $2);}
-    | ZOOM NAME_LIST REAL {zoom_list(figures, $2, $3);}
+    | ZOOM NAME_LIST REAL {zoom_list(figures, names, $3);}
   ;
 
 ROTATE_CMD:
     ROTATE NUM {rotate(figures, $2);}
-    | ROTATE NAME_LIST NUM {rotate_list(figures, $2, $3);}
+    | ROTATE NAME_LIST NUM {rotate_list(figures, names, $3);}
   ;
 
 COPY_CMD:
@@ -142,18 +138,18 @@ COPY_CMD:
   ;
 
 OPTION:
-  THICKNESS NUM  OPTION_OR_EMPTY {$$=set_thickness($3, $2);}
-  | FILL WITH COLOR  OPTION_OR_EMPTY {$$=set_fill_color($4, $3);}
-  | COLOR  OPTION_OR_EMPTY {$$=set_color($2, $1);}
-  | NOFILL  OPTION_OR_EMPTY {$$=set_fill_color($2, "none");}
-  | INVISIBLE  OPTION_OR_EMPTY {$$=set_visible($2, 0);}
-  | VISIBLE  OPTION_OR_EMPTY {$$=set_visible($2, 1);}
-  | FONTSIZE NUM  OPTION_OR_EMPTY {$$=set_font_size($3, $2);}
+  THICKNESS NUM  OPTION_OR_EMPTY {set_thickness(figures, names, $2);}
+  | FILL WITH COLOR  OPTION_OR_EMPTY {set_fill_color(figures, names, $3);}
+  | COLOR  OPTION_OR_EMPTY {set_color(figures, names, $1);}
+  | NOFILL  OPTION_OR_EMPTY {set_fill_color(figures, names, "none");}
+  | INVISIBLE  OPTION_OR_EMPTY {set_visible(figures, names, 0);}
+  | VISIBLE  OPTION_OR_EMPTY {set_visible(figures, names, 1);}
+  | FONTSIZE NUM  OPTION_OR_EMPTY {set_font_size(figures, names, $2);}
   ;
 
 OPTION_OR_EMPTY:
-  %empty {$$=get_default_options();}
-  | OPTION {$$=$1;}
+  %empty {}
+  | OPTION {}
   ;
 
 FIGURE:
@@ -203,8 +199,8 @@ COORD_ALONE :
   ;
 
 NAME_LIST:
-  NAME {$$=appendName(NULL, $1);}
-  | NAME COMMA NAME_LIST {$$=appendName($3, $1);}
+  NAME {names=appendName(NULL, $1);}
+  | NAME COMMA NAME_LIST {names=appendName(names, $1);}
   ;
 
 %%

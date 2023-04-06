@@ -45,12 +45,11 @@ void copy(HashMap* hashMap, char * toCopy, char * copy);
 
 void apply_options_list(HashMap* HashMap, NameList* list, Options* options);
 
-Options* get_default_options();
-Options* set_color(Options* opt, char * color);
-Options* set_fill_color(Options* opt, char * color);
-Options* set_visible(Options* opt, int visible);
-Options* set_thickness(Options* opt, long thickness);
-Options* set_font_size(Options* opt, long font_size);
+void set_color(HashMap* hashMap, NameList* list, char * color);
+void set_fill_color(HashMap* hashMap, NameList* list, char * color);
+void set_visible(HashMap* hashMap, NameList* list, int visible);
+void set_thickness(HashMap* hashMap, NameList* list, long thickness);
+void set_font_size(HashMap* hashMap, NameList* list, long font_size);
 
 void set_selected(HashMap* hashMap, char * name, int selected);
 void set_all_selected(HashMap* hashMap, int selected);

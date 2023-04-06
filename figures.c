@@ -160,6 +160,16 @@ void freeHashMap(HashMap* hashMap) {
     free(hashMap);
 }
 
+Options* get_default_options() {
+    Options* opt = (Options*) malloc(sizeof(Options));
+    strcpy(opt->color, DEFAULT_COLOR);
+    strcpy(opt->fill_color, DEFAULT_COLOR);
+    opt->thickness = DEFAULT_THICKNESS;
+    opt->visible = DEFAULT_VISIBILITY;
+    opt->font_size = DEFAULT_FONT_SIZE;
+    return opt;
+}
+
 Figure* createFigure(char * name, fig_type type, Coord* coords) {
     Figure* figure = (Figure*) malloc(sizeof(Figure));
     figure->type = type;
@@ -419,39 +429,54 @@ void apply_options_list(HashMap* HashMap, NameList* list, Options* options) {
     free(options);
 }
 
-Options* get_default_options() {
-    Options* opt = (Options*) malloc(sizeof(Options));
-    strcpy(opt->color, DEFAULT_COLOR);
-    strcpy(opt->fill_color, DEFAULT_COLOR);
-    opt->thickness = DEFAULT_THICKNESS;
-    opt->visible = DEFAULT_VISIBILITY;
-    opt->font_size = DEFAULT_FONT_SIZE;
-    return opt;
+void set_color(HashMap* hashMap, NameList* list, char * color) {
+    while (list != NULL) {
+        Figure* figure = get(hashMap, list->name);
+        if (figure != NULL) {
+            strcpy(figure->opts->color, color);
+        }
+        list = list->next;
+    }
 }
 
-Options* set_color(Options* opt, char * color) {
-    strcpy(opt->color, color);
-    return opt;
+void set_fill_color(HashMap* hashMap, NameList* list, char * color) {
+    while (list != NULL) {
+        Figure* figure = get(hashMap, list->name);
+        if (figure != NULL) {
+            strcpy(figure->opts->fill_color, color);
+        }
+        list = list->next;
+    }
 }
 
-Options* set_fill_color(Options* opt, char * color) {
-    strcpy(opt->fill_color, color);
-    return opt;
+void set_visible(HashMap* hashMap, NameList* list, int visible) {
+    while (list != NULL) {
+        Figure* figure = get(hashMap, list->name);
+        if (figure != NULL) {
+            figure->opts->visible = visible;
+        }
+        list = list->next;
+    }
 }
 
-Options* set_visible(Options* opt, int visible) {
-    opt->visible = visible;
-    return opt;
+void set_thickness(HashMap* hashMap, NameList* list, long thickness) {
+    while (list != NULL) {
+        Figure* figure = get(hashMap, list->name);
+        if (figure != NULL) {
+            figure->opts->thickness = thickness;
+        }
+        list = list->next;
+    }
 }
 
-Options* set_thickness(Options* opt, long thickness) {
-    opt->thickness = thickness;
-    return opt;
-}
-
-Options* set_font_size(Options* opt, long font_size) {
-    opt->font_size = font_size;
-    return opt;
+void set_font_size(HashMap* hashMap, NameList* list, long font_size) {
+    while (list != NULL) {
+        Figure* figure = get(hashMap, list->name);
+        if (figure != NULL) {
+            figure->opts->font_size = font_size;
+        }
+        list = list->next;
+    }
 }
 
 void set_selected(HashMap* hashMap, char * name, int selected) {

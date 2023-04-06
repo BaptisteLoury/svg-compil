@@ -6,6 +6,6 @@ COPY aaa ccc; SELECT ccc; MOVE (0, 200); ZOOM ccc, bbb 1.5
 CREATE TEXT ddd "some text" AT (600, 20);
 COPY ddd eee; MOVE eee (0, 70); ZOOM eee 0.7
 
-SET aaa, bbb #203070
+SET aaa, bbb #203070; SET bbb THICKNESS 10
 
 DUMP "test.svg"
