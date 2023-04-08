@@ -11,7 +11,8 @@ num   -?{digit}+
 real {num}\.{pos_num}?
 name [a-zA-Z][a-zA-Z0-9\-_]*
 string \"(\\(.|\n)|[^\\"\n])*\"
-color #{hexaDigit}{3}({hexaDigit}{3})?
+hexa_x_3 {hexaDigit}{hexaDigit}{hexaDigit}
+color #{hexa_x_3}{hexa_x_3}?
 dim {pos_num}x{pos_num}
 
 %option noyywrap

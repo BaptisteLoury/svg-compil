@@ -2,7 +2,7 @@ BIN= svg
 
 all: $(BIN).y $(BIN).l
 	bison -d -g -v $(BIN).y
-	dot -Tpng $(BIN).dot -o $(BIN).png
+	dot -Tsvg $(BIN).dot -o $(BIN).svg
 	flex -dTv $(BIN).l
 	$(CC) -c lex.yy.c -o lex.yy.o
 	$(CC) -c figures.c -o figures.o
