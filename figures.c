@@ -68,13 +68,13 @@ HashMap* createHashMap(int size) {
     return hashMap;
 }
 
-void put(HashMap* hashMap, char* key, Figure* value) {
+int add(HashMap* hashMap, Figure* value) {
+    char * key = value->name;
     int index = hash(key, hashMap->size);
     Node* node = hashMap->buckets[index];
     while (node != NULL) {
         if (strcmp(node->key, key) == 0) {
-            node->value = value;
-            return;
+            return 0;
         }
         node = node->next;
     }
@@ -83,10 +83,7 @@ void put(HashMap* hashMap, char* key, Figure* value) {
     node->value = value;
     node->next = hashMap->buckets[index];
     hashMap->buckets[index] = node;
-}
-
-void add(HashMap* hashMap, Figure* figure) {
-    put(hashMap, figure->name, figure);
+    return 1;
 }
 
 Figure* get(HashMap* hashMap, char* key) {
@@ -215,6 +212,10 @@ char * removeDblQuote(char * string) {
 }
 void set_text(Figure* figure, char * text) {
     strcpy(figure->text, removeDblQuote(text));
+}
+
+char * get_name(Figure* figure) {
+    return figure->name;
 }
 Coord* generate_coords(Coord* coords, long x, long y) {
     Coord* generated = (Coord*) malloc(sizeof(Coord));
@@ -355,26 +356,29 @@ void dump_to_file(HashMap* hashMap, char * file) {
     } else {
         dump_to_desc(hashMap, f);
         fclose(f);
-        fprintf(stdout, "Successfully dumped to %s\n", fileName);
     }
     free(fileName);
 }
 
-void delete_fig(HashMap* hashMap, char * name) {
+int delete_fig(HashMap* hashMap, char * name) {
     Figure* figure = get(hashMap, name);
     if(figure != NULL) {
         deleteKey(hashMap, name);
         freeFig(figure);
+        return 1;
     }
+    return 0;
 }
 
-void rename_fig(HashMap* hashMap, char * old, char * new) {
+int rename_fig(HashMap* hashMap, char * old, char * new) {
     Figure* figure = get(hashMap, old);
     if(figure != NULL) {
         strcpy(figure->name, new);
         deleteKey(hashMap, old);
-        put(hashMap, new, figure);
+        add(hashMap, figure);
+        return 1;
     }
+    return 0;
 }
 
 Coord* copyCoord(Coord* orig) {
@@ -396,13 +400,15 @@ Figure* copyFig(Figure * figure) {
     return copy;
 }
 
-void copy(HashMap* hashMap, char * toCopy, char * copy) {
+int copy(HashMap* hashMap, char * toCopy, char * copy) {
     Figure * orig = get(hashMap, toCopy);
     if (orig != NULL && get(hashMap, copy) == NULL) {
         Figure * new = copyFig(orig);
         strcpy(new->name, copy);
-        put(hashMap, copy, new);
+        add(hashMap, new);
+        return 1;
     }
+    return 0;
 }
 void set_color(Figure* figure, Transfer transfer) {
     strcpy(figure->opts.color, transfer.string);
@@ -470,4 +476,9 @@ void homothetie(Figure* figure, Transfer args) {
 void rotate_fig(Figure* figure, Transfer args) {
     figure->opts.rotation_angle += args.long1;
     figure->opts.rotation_angle %= 360;
+}
+
+int name_exists(HashMap* hashMap, char * name) {
+    Figure* figure = get(hashMap, name);
+    return figure != NULL;
 }

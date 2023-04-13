@@ -4,6 +4,7 @@
 #include <math.h>
 #include <unistd.h>
 #include <fcntl.h>
+#include <string.h>
 
 
 int yyerror(char*);
@@ -37,8 +38,8 @@ int line = 1;
 %token <num> NUM
 %token <str> COLOR NAME STRING
 %token <dim> DIM
-%token ALL AT CIRCLE COPY CREATE DELETE DESELECT DO DONE DUMP 
-%token ELLIPSE FILL FONTSIZE FOREACH INVISIBLE LINE MOVE NOFILL
+%token ALL AT CIRCLE COPY CREATE DELETE DESELECT DUMP 
+%token ELLIPSE FILL FONTSIZE INVISIBLE LINE MOVE NOFILL
 %token POLYGON RADIUS RENAME RECTANGLE ROTATE SELECT SET TEXT
 %token THICKNESS VISIBLE WITH ZOOM EOL COORD_L COMMA COORD_R SEMICOLON
 %type <point> COORD_AT_LEAST_3 COORD_1 COORD_2
@@ -60,27 +61,27 @@ INPUT:
 
 CMD:
     error {}
-  | CREATE_CMD {printf("[ACTION]: CREATE\n");}
-  | DUMP_CMD {printf("[ACTION]: DUMP\n");}
-  | RENAME_CMD {printf("[ACTION]: RENAME\n");}
-  | DELETE_CMD {printf("[ACTION]: DELETE\n");}
-  | SET_CMD {printf("[ACTION]: SET\n");}
-  | SELECT_CMD {printf("[ACTION]: SELECT\n");}
-  | DESELECT_CMD {printf("[ACTION]: DESELECT\n");}
+  | CREATE_CMD {}
+  | DUMP_CMD {}
+  | RENAME_CMD {}
+  | DELETE_CMD {}
+  | SET_CMD {}
+  | SELECT_CMD {}
+  | DESELECT_CMD {}
   | TRANSFORMATION_CMD {}
-  | COPY_CMD {printf("[ACTION]: COPY\n");}
+  | COPY_CMD {}
   ;
 
 CREATE_CMD:
-    CREATE CREATE_FIGURE {add(figures, current); current = NULL;}
+    CREATE CREATE_FIGURE {if(!add(figures, current)) {yyerror("this name is already taken");} current = NULL;}
   ;
 
 DELETE_CMD:
-    DELETE NAME {delete_fig(figures, $2);}
+    DELETE NAME {if(!delete_fig(figures, $2)) {yyerror("this name is not set");} }
   ;
 
 RENAME_CMD:
-    RENAME NAME WITH NAME {rename_fig(figures, $2, $4);}
+    RENAME NAME WITH NAME {if(!rename_fig(figures, $2, $4)) {yyerror("source name is not set or target name is already taken");}}
   ;
 
 DUMP_CMD:
@@ -104,9 +105,9 @@ DESELECT_CMD:
   ;
 
 TRANSFORMATION_CMD:
-  MOVE_CMD {printf("[ACTION]: MOVE\n");}
-  | ZOOM_CMD {printf("[ACTION]: ZOOM\n");}
-  | ROTATE_CMD {printf("[ACTION]: ROTATE\n");}
+  MOVE_CMD {}
+  | ZOOM_CMD {}
+  | ROTATE_CMD {}
   ;
 
 MOVE_CMD:
@@ -128,7 +129,7 @@ ROTATE_CMD:
   ;
 
 COPY_CMD:
-  COPY NAME NAME {copy(figures, $2, $3);}
+  COPY NAME NAME {if(!copy(figures, $2, $3)) {yyerror("source name is not set or target name is already taken");}}
   ;
 
 OPTION_LIST:
@@ -350,7 +351,7 @@ COORD_1:
   ;
 
 NAME_LIST:
-    NAME {names=appendName(NULL, $1);}
+    NAME {if (!name_exists(figures, $1)) {yyerror("name is not set");} else {names=appendName(NULL, $1);} }
   | NAME COMMA NAME_LIST {names=appendName(names, $1);}
   ;
 

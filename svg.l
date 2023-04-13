@@ -47,14 +47,11 @@ dim {pos_num}x{pos_num}
 [cC][rR][eE][aA][tT][eE] {return CREATE;}
 [dD][eE][lL][eE][tT][eE] {return DELETE;}
 [dD][eE][sS][eE][lL][eE][cC][tT] {return DESELECT;}
-[dD][oO] {return DO;}
-[dD][oO][nN][eE] {return DONE;}
 [dD][uU][mM][pP] {return DUMP;}
 [eE][lL][lL][iI][pP][sS][eE] {return ELLIPSE;}
 [eE][oO][lL] {return EOL;}
 [fF][iI][lL][lL] {return FILL;}
 [fF][oO][nN][tT][sS][iI][zZ][eE] {return FONTSIZE;}
-[fF][oO][rR][eE][aA][cC][hH] {return FOREACH;}
 [iI][nN][vV][iI][sS][iI][bB][lL][eE] {return INVISIBLE;}
 [lL][iI][nN][eE] {return LINE;}
 [mM][oO][vV][eE] {return MOVE;}
